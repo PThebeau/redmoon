@@ -18,14 +18,19 @@ I host my PHP files locally on a spare tower PC to save costs, while my main hom
 File Structure and Setup:
 The files available here are live and connected to my database, with sensitive information like usernames and passwords redacted. I use XAMPP to host my PHP files, and the mssqlconfig.php file handles the database connection. An ODBC is required to connect the database to the website files, specifically the PHP scripts.
 
-Key Scripts:
-AddAccount.php: Allows new players to create an in-game account.
-DELETElogin.php, DELETEpage.php, REBIRTHlogout.php: These scripts handle the login, permissions, and logout processes.
-InjectionBLOCK.php: A crucial script to prevent SQL injection attacks by monitoring and blocking unauthorized queries.
-Online.php: Displays the number of players currently online by refreshing data every 10 seconds.
-Shop.php: An integrated online shop using PayPal's API. It automates purchases and delivers items to players in-game.
+AddAccount.php: This script allows new players to create an in-game account.
+
+DELETElogin.php, DELETEpage.php, REBIRTHlogout.php: These scripts manage the login, permissions, and logout processes for the game.
+
+InjectionBLOCK.php: A crucial security script that prevents SQL injection attacks by monitoring and blocking unauthorized queries.
+
+Online.php: This script displays the number of players currently online, with data refreshing every 10 seconds.
+
+Shop.php: An integrated online shop using PayPal's API, automating the purchase process and delivering items to players in-game.
+
 UpdateLogFilesMonthly.php: Automates the monthly update of log files, saving manual effort.
-Additionally, I have numerous stored procedures, triggers, and tables available for those interested.
+
+Additionally, there are numerous stored procedures, triggers, and tables available for those interested.
 
 My Daily Tasks:
 Front-End Development: HTML, CSS
