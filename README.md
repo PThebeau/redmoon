@@ -28,7 +28,7 @@ All the files and instructions provided here are created and tested by me. My jo
 I host my PHP files locally on a spare tower PC to save costs, while my main homepage is hosted in the cloud for domain and security reasons. Despite some skepticism about local hosting, it costs me only around $15 a year for a Dynamic-Hidden-IP-DNS service and my domain. My server has had less downtime compared to some cloud services.
 
 ## File Structure and Setup
-The files provided here are live and connected to my database, with sensitive information like usernames and passwords redacted. The key configuration file, `mssqlconfig.php`, handles the database connection setup.
+The files provided here are live and connected to my database, with sensitive information like usernames and passwords redacted. The key configuration file, `dbconfig.php`, handles the database connection setup.
 
 ### Key Scripts
 - **AddAccount.php**: Allows new players to create an in-game account.
