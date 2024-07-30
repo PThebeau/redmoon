@@ -1,10 +1,10 @@
 <?php
 
 
-$hostname = "184.91.223.5";
-$dbuser = "thebeau";
-$dbpassword = "Kaylee2011*";
-$dbname = "redmoon";
+$hostname = "";
+$dbuser = "";
+$dbpassword = "";
+$dbname = "";
 
 try {
     $dsn = "odbc:Driver={SQL Server};Server=$hostname;Database=$dbname;";
