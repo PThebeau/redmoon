@@ -1,5 +1,6 @@
 <?php
-require 'mssqlconfig.php';
+// Include your database connection file
+  include("config.php");
 
 // Function to log errors to a file
 function logError($message) {
@@ -7,7 +8,7 @@ function logError($message) {
 }
 
 // Function to create dynamic tables
-function createDynamicTables($db_link) {
+function createDynamicTables($conn) {
     // List of procedures to create tables
     $createTableProcedures = array(
         'CreateDeathLogTable',
@@ -19,32 +20,17 @@ function createDynamicTables($db_link) {
     );
 
     foreach ($createTableProcedures as $procedure) {
-        $stmt = mssql_init($procedure, $db_link);
+        $stmt = odbc_exec($conn, "EXEC $procedure");
 
         if (!$stmt) {
-            logError('Failed to initialize statement: ' . mssql_get_last_message());
+            logError('Failed to execute procedure: ' . $procedure . ' - ' . odbc_errormsg($conn));
             continue;
         }
-
-        if (!mssql_execute($stmt)) {
-            logError('Stored procedure execution failed: ' . mssql_get_last_message());
-            mssql_free_statement($stmt);
-            continue;
-        }
-
-        mssql_free_statement($stmt);
     }
 }
 
 // Function to insert data into UserLog table
-function insertUserLog($db_link, $userName, $loginTime, $logoutTime, $status, $sessionID, $extra1, $extra2, $ipAddress) {
-    $stmt = mssql_init('InsertUserLog', $db_link);
-
-    if (!$stmt) {
-        logError('Failed to initialize statement: ' . mssql_get_last_message());
-        return;
-    }
-
+function insertUserLog($conn, $BillID, $loginTime, $logoutTime, $status, $UseTime, $extra1, $extra2, $ipAddress) {
     // Provide default values for columns that cannot be null
     if (is_null($extra1)) {
         $extra1 = '';
@@ -57,34 +43,33 @@ function insertUserLog($db_link, $userName, $loginTime, $logoutTime, $status, $s
     $loginTimeStr = date('Y-m-d H:i:s', strtotime($loginTime));
     $logoutTimeStr = date('Y-m-d H:i:s', strtotime($logoutTime));
 
-    mssql_bind($stmt, '@UserName', $userName, SQLVARCHAR, false, false, 50);
-    mssql_bind($stmt, '@LoginTime', $loginTimeStr, SQLVARCHAR, false, false, 50);
-    mssql_bind($stmt, '@LogoutTime', $logoutTimeStr, SQLVARCHAR, false, false, 50);
-    mssql_bind($stmt, '@Status', $status, SQLINT4);
-    mssql_bind($stmt, '@SessionID', $sessionID, SQLINT4);
-    mssql_bind($stmt, '@Extra1', $extra1, SQLVARCHAR, false, false, 50);
-    mssql_bind($stmt, '@Extra2', $extra2, SQLVARCHAR, false, false, 50);
-    mssql_bind($stmt, '@IPAddress', $ipAddress, SQLVARCHAR, false, false, 50);
+    $stmt = odbc_exec($conn, "EXEC InsertUserLog 
+        @BillID = '$BillID', 
+        @LoginTime = '$loginTimeStr', 
+        @LogoutTime = '$logoutTimeStr', 
+        @Status = $status, 
+        @UseTime = $UseTime, 
+        @Extra1 = '$extra1', 
+        @Extra2 = '$extra2', 
+        @IPAddress = '$ipAddress'");
 
-    if (!mssql_execute($stmt)) {
-        logError('Stored procedure execution failed: ' . mssql_get_last_message());
+    if (!$stmt) {
+        logError('Stored procedure execution failed: ' . odbc_errormsg($conn));
     }
-
-    mssql_free_statement($stmt);
 }
 
 // Ensure the connection is established
-if ($db_link) {
+if ($conn) {
     // Example usage: Create dynamic tables
-    createDynamicTables($db_link);
+    createDynamicTables($conn);
 
     // Example usage: Insert data into UserLog table
-    // insertUserLog($db_link, 'username', '2024-07-24 01:00:00', '2024-07-24 02:00:00', 1, 123, 'extra1', 'extra2', '127.0.0.1');
+    // insertUserLog($conn, 'username', '2024-07-24 01:00:00', '2024-07-24 02:00:00', 1, 123, 'extra1', 'extra2', '127.0.0.1');
 
     // Close the database connection
-    mssql_close($db_link);
+    odbc_close($conn);
 } else {
-    logError('Failed to connect to the database: ' . mssql_get_last_message());
+    logError('Failed to connect to the database: ' . odbc_errormsg());
 }
 ?>
 

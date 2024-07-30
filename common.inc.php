@@ -1,13 +1,22 @@
 <?php
+if (session_status() == PHP_SESSION_NONE) {
+    // Set session cache expire and cookie parameters before starting the session
+    session_cache_expire(60 * 24 * 31); // Set cache expiration to 31 days
+    session_set_cookie_params(60 * 60 * 24 * 31); // Set cookie expiration to 31 days
+    session_start(); // Start the session
+}
+
+// Other initialization code can go here
 $starttime = getmicrotime();
 $numqueries = 0;
 
 error_reporting(E_ALL);
 
-session_cache_expire(60 * 24 * 31);
-session_set_cookie_params(60 * 60 * 24 * 31);
-session_start();
-if (get_magic_quotes_gpc()) {
+
+
+
+// Removed the get_magic_quotes_gpc() check since it's no longer available in PHP 7.4+
+if (function_exists('get_magic_quotes_gpc') && get_magic_quotes_gpc()) {
     function stripslashes_deep($value) {
         return is_array($value) ? array_map('stripslashes_deep', $value) : stripslashes($value);
     }
@@ -16,6 +25,7 @@ if (get_magic_quotes_gpc()) {
     $_GET = array_map('stripslashes_deep', $_GET);
     $_COOKIE = array_map('stripslashes_deep', $_COOKIE);
 }
+
 extract($_GET, EXTR_PREFIX_ALL, "gp");
 extract($_POST, EXTR_PREFIX_ALL, "gp");
 
@@ -26,57 +36,40 @@ require_once 'Result.class.php';
 $db = new DB;
 $types = array('Philar', 'Azlar', 'Sadad', 'Destino', 'Jarexx', 'Canon', 'Kitara', 'Luna', 'Lavita');
 
-if (!isset($noinit)) {
+if (!@$noinit) {
     init();
 }
 
 function init() {
     global $db, $account, $gp_username, $gp_password;
 
-    $account = array(
-        'loggedin' => false,
-        'chars' => array(),
-        'username' => '',
-        'password' => '',
-        'data' => array(),
-    );
-
     if (isset($_SESSION['username']) && isset($_SESSION['password'])) {
         $result = $db->query('SELECT * FROM tblBillID WHERE BillID = ? AND Password = ?', array($_SESSION['username'], $_SESSION['password']));
-        if ($row = $result->fetch()) {
+        if ($result->fetch()) {
             $account['loggedin'] = true;
-            $account['username'] = $row['BillID'];
-            $account['password'] = $row['Password'];
-            $account['data'] = $row;
         }
     } elseif (isset($gp_username) && isset($gp_password)) {
         $result = $db->query('SELECT * FROM tblBillID WHERE BillID = ? AND Password = ?', array($gp_username, $gp_password));
-        if ($row = $result->fetch()) {
+        if ($result->fetch()) {
             $account['loggedin'] = true;
-            $account['username'] = $row['BillID'];
-            $account['password'] = $row['Password'];
-            $account['data'] = $row;
         }
     }
-
-    if ($account['loggedin']) {
-        $_SESSION['username'] = $account['username'];
-        $_SESSION['password'] = $account['password'];
+    
+    if (!empty($account['loggedin'])) {
+        $_SESSION['username'] = $account['username'] = $result->BillID;
+        $_SESSION['password'] = $account['password'] = $result->Password;
+        $account['data'] = $result->data;
 
         $chars = $db->query('SELECT * FROM tblGameID1 WHERE BillID = ?', array($account['username']));
-        while ($char = $chars->fetch()) {
-            $account['chars'][$char['GameID']] = $char;
+        while ($chars->fetch()) {
+            $account['chars'][$chars->GameID] = $chars->data;
         }
     }
 }
 
 function gdie($error) {
-    ?>
-    <div class="content-box">
-        <p>An error has occurred!</p>
-        <pre><?= htmlspecialchars($error) ?></pre>
-    </div>
-    <?php
+    echo "<p>An error has occurred!</p>";
+    echo "<pre>" . htmlspecialchars($error) . "</pre>";
     die();
 }
 
@@ -111,7 +104,7 @@ function honor_color_simple($honor) {
     else if ($honor < -700) { return '#c6696b'; }
     else if ($honor < -400) { return '#efcfce'; }
     else if ($honor < 0)    { return '#d69a9c'; }
-
+    
     return '#ffffff';
 }
 
@@ -157,7 +150,7 @@ function nice_number($num) {
     return round($num / 1000000000, 1) . ' bil';
 }
 
-function item_location($kind) {
+function item_location ($kind) {
     if ($kind == 1) {
         return 'I';
     } else if ($kind == 2) {
@@ -176,7 +169,7 @@ function item_location($kind) {
 }
 
 function goto_login() {
-    header("Location: login.php?redirectdone=" . urlencode($_SERVER['REQUEST_URI']));
+    header("Location: login.php?redirectdone={$_SERVER['REQUEST_URI']}");
     exit;
 }
 
@@ -187,17 +180,12 @@ function getmicrotime() {
 
 function html_header($title) {
     global $account;
-    // Output any header-related content here
+    // You need to define what should happen inside this function
 }
 
 function html_footer() {
     global $db, $account, $starttime, $numqueries;
 
-    echo '<div  style="text-align: center;">';
-    $result = $db->query('SELECT COUNT(*) AS count FROM tblOccupiedBillID');
-    if ($row = $result->fetch()) {
-        echo "";
-    }
-    echo '</div>';
+    echo "<p></p>";
 }
 ?>

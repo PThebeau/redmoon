@@ -3,120 +3,107 @@
 
 <head>
     <meta charset="UTF-8">
-    <title>Redmoon</title>
+    <title>Redmoon - Players Online</title>
     <style>
         body {
-            height: 100%;
+            background-color: #ffffff; /* White background */
+            color: #00bfa5; /* Turquoise text color */
+            font-family: Arial, sans-serif;
+            text-align: center;
+        }
+
+        .online-section {
+            background-color: #f0f0f0; /* Light grey background for the section */
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.5);
+            width: 50%; /* Narrower width */
+            max-width: 400px; /* Maximum width for consistency */
+            margin: 40px auto; /* Center the section */
+            text-align: left;
+        }
+
+        table {
             width: 100%;
-            margin: 0;
-            font-family: 'Arial', sans-serif;
-            background-color: #0c0c0c; /* Dark background color */
-            color: #ffffff; /* Light text color */
-        }
-
-        center {
+            border-collapse: collapse;
             margin-top: 20px;
         }
 
-        form {
+        th, td {
+            padding: 10px;
+            text-align: center; /* Center text and images */
+            border: 1px solid #00bfa5; /* Turquoise border color */
+        }
+
+        th {
+            background-color: #00bfa5; /* Turquoise header background */
+            color: #ffffff; /* White text */
+        }
+
+        .home-button-container {
             margin-top: 20px;
         }
 
-        input[type="button"] {
+        .home-button-container input[type="button"] {
             padding: 10px 20px;
             font-size: 16px;
-            background-color: #e74c3c; /* Redmoon Fantasy theme color for button background */
+            background-color: #00bfa5; /* Turquoise button background */
             color: #ffffff; /* White text color */
             border: none;
             cursor: pointer;
             transition: background-color 0.3s;
         }
 
-        input[type="button"]:hover {
-            background-color: #c0392b; /* Darker shade on hover */
-        }
-
-        p {
-            font-size: 18px;
-            margin-top: 20px;
-        }
-
-        .character-section, .online-section {
-            margin: 20px auto;
-            width: 50%;
-            background-color: #1c1c1c; /* Darker background for sections */
-            padding: 20px;
-            border-radius: 10px;
-        }
-
-        table {
-            width: 50%;
-            border-collapse: collapse;
-            margin-top: 30px;
-        }
-
-        th, td {
-            padding: 15px;
-            text-align: center;
-            border: 2px solid #e74c3c; /* Redmoon Fantasy theme color for the border */
-        }
-
-        th {
-            background-color: #e74c3c; /* Redmoon Fantasy theme color for the header background */
-            color: #ffffff;
+        .home-button-container input[type="button"]:hover {
+            background-color: #008f7a; /* Darker turquoise on hover */
         }
     </style>
 </head>
 
 <body>
-
-    <center>
-        <form>
-            <input type="button" value="Home" onclick="window.location.href='https://redmoon-fantasy.com'" />
-        </form>
-        <form>
-            <input type="button" value="Helpful Tools" onclick="window.location.href='http://redmoonfantasy.ddns.net:3400/redmoon/HelpfulLinks2.php'" />
-        </form>
-    </center>
+    <div class="home-button-container">
+        <input type="button" value="HOME" onclick="window.location.href='https://redmoon-fantasy.com'" />
+    </div>
 
     <div class="online-section">
-        <center>
-            <h2>Players Currently Online</h2>
-            <table>
-                <tr>
-                    <th>Online</th>
-                    <th>Account Type</th>
-                </tr>
-                <?php
-                include("mssqlconfig.php");
+        <h2>Players Currently Online</h2>
+        <table>
+            <tr>
+                <th>Online</th>
+                <th>Account Type</th>
+            </tr>
+            <?php
+            include("config.php");
+            try {
                 $query = "SELECT o.GameID, b.is_hardcore 
                           FROM tblOccupiedBillID o 
                           JOIN tblBillID b ON o.BillID = b.BillID 
                           WHERE o.GameID NOT LIKE 'GM%'";
-                $names = mssql_query($query);
-                while ($row = mssql_fetch_array($names)) {
-                    $isHardcore = $row['is_hardcore'];
+                $stmt = odbc_exec($conn, $query);
+
+                while ($row = odbc_fetch_array($stmt)) {
                     echo '<tr>';
                     echo '<td>' . htmlspecialchars($row['GameID']) . '</td>';
                     echo '<td>';
-                    if ($isHardcore) {
-                        echo '<img src="http://redmoonfantasy.ddns.net:3400/redmoon/face/skull.png" style="width: 60px; height: 50px;">';
+                    if ($row['is_hardcore']) {
+                        echo '<img src="http://redmoonfantasy.ddns.net:3400/redmoon/face/skull.png" style="width: 50px; height: 40px;">';
                     } else {
-                        echo '<img src="http://redmoonfantasy.ddns.net:3400/redmoon/face/GreySkull.png" style="width: 50px; height: 50px;">';
+                        echo '<img src="http://redmoonfantasy.ddns.net:3400/redmoon/face/GreySkull.png" style="width: 50px; height: 40px;">';
                     }
                     echo '</td>';
                     echo '</tr>';
                 }
-                ?>
-            </table>
-            <p>
-                <img src="http://redmoonfantasy.ddns.net:3400/redmoon/face/GreySkull.png" style="width: 30px; height: 30px;"> = Normal Account<br>
-                <img src="http://redmoonfantasy.ddns.net:3400/redmoon/face/skull.png" style="width: 40px; height: 30px;"> = Hardcore Account
-            </p>
-        </center>
+                odbc_close($conn);
+            } catch (Exception $e) {
+                echo "Connection failed: " . $e->getMessage();
+            }
+            ?>
+        </table>
+        <p>
+            <img src="http://redmoonfantasy.ddns.net:3400/redmoon/face/GreySkull.png" style="width: 30px; height: 30px;"> = Normal Account<br>
+            <img src="http://redmoonfantasy.ddns.net:3400/redmoon/face/skull.png" style="width: 30px; height: 25px;"> = Hardcore Account
+        </p>
     </div>
-
-
 
     <script>
         // Reload the page every 10 seconds
@@ -124,7 +111,5 @@
             location.reload();
         }, 10000);
     </script>
-
 </body>
-
 </html>

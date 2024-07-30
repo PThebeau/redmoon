@@ -6,14 +6,14 @@
     <title>Create Account</title>
     <style>
         body {
-            background-color: #000;
-            color: #e74c3c;
+            background-color: #ffffff; /* White background */
+            color: #00bfa5; /* Turquoise font color */
             text-align: center;
             font-family: Arial, sans-serif;
         }
 
         .form-container {
-            background-color: #1c1c1c;
+            background-color: #f0f0f0; /* Light grey background for form */
             padding: 20px;
             border-radius: 10px;
             box-shadow: 0 0 10px rgba(0, 0, 0, 0.5);
@@ -35,9 +35,9 @@
             padding: 10px;
             font-size: 16px;
             margin-bottom: 10px;
-            border: 1px solid #e74c3c;
-            background-color: #000;
-            color: #e74c3c;
+            border: 1px solid #00bfa5; /* Turquoise border color */
+            background-color: #ffffff; /* White background for inputs */
+            color: #00bfa5; /* Turquoise text color */
             box-sizing: border-box;
         }
 
@@ -47,7 +47,7 @@
         }
 
         .form-container input[type="submit"]:hover {
-            background-color: #c0392b;
+            background-color: #008f7a; /* Darker turquoise on hover */
         }
 
         .form-container .checkbox-container {
@@ -64,7 +64,7 @@
 
         .disclaimer {
             margin-top: 20px;
-            color: #e74c3c;
+            color: #00bfa5; /* Turquoise text color */
             font-size: 14px;
             text-align: left; /* Ensure text alignment is consistent */
             white-space: pre-wrap; /* Preserve line breaks */
@@ -77,15 +77,21 @@
         .home-button-container input[type="button"] {
             padding: 10px 20px;
             font-size: 16px;
-            background-color: #e74c3c;
-            color: #ffffff;
+            background-color: #00bfa5; /* Turquoise button background */
+            color: #ffffff; /* White text color */
             border: none;
             cursor: pointer;
             transition: background-color 0.3s;
         }
 
         .home-button-container input[type="button"]:hover {
-            background-color: #c0392b;
+            background-color: #008f7a; /* Darker turquoise on hover */
+        }
+
+        .message {
+            color: #00bfa5; /* Turquoise text color */
+            font-size: 18px;
+            margin-bottom: 20px;
         }
     </style>
 </head>
@@ -96,6 +102,52 @@
             <input type="button" value="HOME" onclick="window.location.href='http://www.redmoon-fantasy.com'" />
         </form>
     </div>
+
+    <?php
+    include("config.php");
+
+    $message = "";
+
+    if (isset($_POST['CreateAccount'])) {
+        if (!empty($_POST['loginID']) && !empty($_POST['Password']) && !empty($_POST['Password2']) && !empty($_POST['question']) && !empty($_POST['answer'])) {
+            $loginID = $_POST['loginID'];
+            $password = $_POST['Password'];
+            $password2 = $_POST['Password2'];
+            $question = $_POST['question'];
+            $answer = $_POST['answer'];
+            $is_hardcore = isset($_POST['is_hardcore']) ? 1 : 0;
+
+            if ($password === $password2) {
+                $query = "SELECT BillID FROM tblBillID WHERE BillID = ?";
+                $stmt = odbc_prepare($conn, $query);
+                odbc_execute($stmt, array($loginID));
+                $result = odbc_fetch_array($stmt);
+
+                if ($result) {
+                    $message = "<b>Account name in use.</b>";
+                } else {
+                    $accquery = "INSERT INTO tblBillID (BillID, Password, FreeDate, SecurityNum1, SecurityNum2, Note1, Note2, is_hardcore) VALUES (?, ?, '1.1.2010', '5846', '101', ?, ?, ?)";
+                    $accstmt = odbc_prepare($conn, $accquery);
+                    $accparams = array($loginID, $password, $question, $answer, $is_hardcore);
+
+                    if (odbc_execute($accstmt, $accparams)) {
+                        $message = "<b>Account created successfully.</b>";
+                    } else {
+                        $message = "<b>Error creating account.</b>";
+                    }
+                }
+            } else {
+                $message = "<b>Passwords do not match.</b>";
+            }
+        } else {
+            $message = "<b>Please fill in all fields.</b>";
+        }
+    }
+    ?>
+
+    <?php if (!empty($message)) : ?>
+        <div class="message"><?php echo $message; ?></div>
+    <?php endif; ?>
 
     <h1>Create Account</h1>
     <div class="form-container">
@@ -139,44 +191,5 @@
         </form>
     </div>
 </body>
+
 </html>
-
-<?php
-require 'config.php';
-
-if (isset($_POST['CreateAccount'])) {
-    if (!empty($_POST['loginID']) && !empty($_POST['Password']) && !empty($_POST['Password2']) && !empty($_POST['question']) && !empty($_POST['answer'])) {
-        $loginID = $_POST['loginID'];
-        $password = $_POST['Password'];
-        $password2 = $_POST['Password2'];
-        $question = $_POST['question'];
-        $answer = $_POST['answer'];
-        $is_hardcore = isset($_POST['is_hardcore']) ? 1 : 0;
-
-        if ($password === $password2) {
-            $query = "SELECT BillID FROM tblBillID WHERE BillID = ?";
-            $stmt = odbc_prepare($conn, $query);
-            odbc_execute($stmt, array($loginID));
-            $result = odbc_fetch_array($stmt);
-
-            if ($result) {
-                echo "<b>Account name in use.</b>";
-            } else {
-                $accquery = "INSERT INTO tblBillID (BillID, Password, FreeDate, SecurityNum1, SecurityNum2, Note1, Note2, is_hardcore) VALUES (?, ?, '1.1.2010', '5846', '101', ?, ?, ?)";
-                $accstmt = odbc_prepare($conn, $accquery);
-                $accparams = array($loginID, $password, $question, $answer, $is_hardcore);
-
-                if (odbc_execute($accstmt, $accparams)) {
-                    echo "<b>Account created successfully.</b>";
-                } else {
-                    echo "<b>Error creating account.</b>";
-                }
-            }
-        } else {
-            echo "<b>Passwords do not match.</b>";
-        }
-    } else {
-        echo "<b>Please fill in all fields.</b>";
-    }
-}
-?>

@@ -1,8 +1,8 @@
 <?php
 	$CONFIG = array(
 		'db' => array(
-			'username' => '_______',	
-			'password' => '_______',
+			'username' => 'thebeau',	
+			'password' => 'Kaylee2011*',
 			'name'     => 'RMEBrain0',
 
 

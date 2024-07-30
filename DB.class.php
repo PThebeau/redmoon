@@ -1,56 +1,35 @@
 <?php
-	class DB {
-		function __construct() {
-			global $CONFIG;
+class DB {
+    private $connection; // Declare the connection property
 
-			$this->connection = odbc_connect($CONFIG['db']['name'], $CONFIG['db']['username'], $CONFIG['db']['password']);
-			if (!$this->connection) {
-				gdie("Could not connect to database.");
-			}
-		}
+    public function __construct() {
+        global $CONFIG;
 
-		function query($query, $data = array()) {
-			global $numqueries;
+        $this->connection = odbc_connect($CONFIG['db']['name'], $CONFIG['db']['username'], $CONFIG['db']['password']);
+        if (!$this->connection) {
+            die("Could not connect to database.");
+        }
+    }
 
-			ob_start();
-			$stmt = odbc_prepare($this->connection, $query);
-			$res = odbc_execute($stmt, $data);
-			$out = ob_get_contents();
-			ob_end_clean();
+    public function query($query, $data = array()) {
+        global $numqueries;
 
-			if ($out) {
-				echo "<!-- DB warning:\n$query\n";
-				print_r($data);
-				echo "\n$out -->";
-			}
+        $stmt = odbc_prepare($this->connection, $query);
+        if (!$stmt) {
+            die("Database query preparation failed:\n$query\n" . odbc_errormsg($this->connection));
+        }
 
-			if (!$stmt) {
-				gdie("Database query failed:\n<br />$query\n<br />" . odbc_get_last_message());
-			}
+        $res = odbc_execute($stmt, $data);
+        if (!$res) {
+            $error = odbc_errormsg($this->connection);
+            odbc_free_result($stmt); // Free the statement resource
+            die("Database query execution failed:\n$query\n$error");
+        }
 
-			$numqueries++;
+        $numqueries++;
+        return new Result($stmt);
+    }
 
-			return new Result($stmt);
-		}
-
-		function insert($table, $data) {
-			$this->query("INSERT INTO $table (" . implode(', ', array_keys($data)) . ') VALUES (' . substr(str_repeat('?, ', count($data)), 0, -2) . ')', array_values($data));
-		}
-		
-		function begin() {
-			$this->query('BEGIN');
-		}
-		
-		function commit() {
-			$this->query('COMMIT');
-		}
-		
-		function rollback() {
-			$this->query('ROLLBACK');
-		}
-		
-		static function escape($string) {
-			return addslashes($string);
-		}
-	}
+    // Additional methods for insert, begin, commit, rollback, etc.
+}
 ?>

@@ -1,6 +1,6 @@
 <?php
 // Include your database connection file
-require 'mssqlconfig.php';
+include("config.php");
 
 // Function to sanitize inputs
 function sanitizeInput($input) {
@@ -9,7 +9,6 @@ function sanitizeInput($input) {
 
 // Function to detect SQL injection patterns
 function isSuspiciousInput($input) {
-    // Add your SQL injection patterns here
     $patterns = [
         '/\bSELECT\b/i',
         '/\bUNION\b/i',
@@ -35,63 +34,33 @@ function logAndBlockIP($ip, $details, $userID = null) {
     global $conn;
 
     // Log the suspicious activity
-    $stmt = $conn->prepare("INSERT INTO SuspiciousActivityLog (ip_address, details, timestamp) VALUES (?, ?, GETDATE())");
-    if ($stmt) {
-        $stmt->bind_param("ss", $ip, $details);
-        $stmt->execute();
-        $stmt->close();
+    $stmt = odbc_prepare($conn, "INSERT INTO SuspiciousActivityLog (ip_address, details, timestamp) VALUES (?, ?, GETDATE())");
+    $params = array($ip, $details);
+    odbc_execute($stmt, $params);
 
-        // Check if the IP should be blocked (e.g., more than 5 attempts in the last hour)
-        $stmt = $conn->prepare("SELECT COUNT(*) FROM SuspiciousActivityLog WHERE ip_address = ? AND timestamp > DATEADD(HOUR, -1, GETDATE())");
-        if ($stmt) {
-            $stmt->bind_param("s", $ip);
-            $stmt->execute();
-            $stmt->bind_result($attempts);
-            $stmt->fetch();
-            $stmt->close();
+    // Check if the IP should be blocked (e.g., more than 5 attempts in the last hour)
+    $stmt = odbc_prepare($conn, "SELECT COUNT(*) FROM SuspiciousActivityLog WHERE ip_address = ? AND timestamp > DATEADD(HOUR, -1, GETDATE())");
+    odbc_execute($stmt, array($ip));
+    $attempts = odbc_result($stmt, 1);
 
-            if ($attempts > 5) {
-                // Block IP (add to a blocklist)
-                $stmt = $conn->prepare("INSERT INTO BlockedIPs (ip_address, blocked_until) VALUES (?, DATEADD(HOUR, 1, GETDATE()))");
-                if ($stmt) {
-                    $stmt->bind_param("s", $ip);
-                    $stmt->execute();
-                    $stmt->close();
-                }
-            }
-        }
-    } else {
-        die("Failed to prepare statement: " . $conn->error);
+    if ($attempts > 5) {
+        // Block IP (add to a blocklist)
+        $stmt = odbc_prepare($conn, "INSERT INTO BlockedIPs (ip_address, blocked_until) VALUES (?, DATEADD(HOUR, 1, GETDATE()))");
+        odbc_execute($stmt, array($ip));
     }
 
     // Disconnect the player by setting KillBillID to True if userID is provided
     if ($userID) {
-        $stmt = $conn->prepare("UPDATE tblOccupiedBillID SET KillBillID = 1 WHERE BillID = ?");
-        if ($stmt) {
-            $stmt->bind_param("s", $userID);
-            $stmt->execute();
-            $stmt->close();
-        } else {
-            die("Failed to prepare statement: " . $conn->error);
-        }
+        $stmt = odbc_prepare($conn, "UPDATE tblOccupiedBillID SET KillBillID = 1 WHERE BillID = ?");
+        odbc_execute($stmt, array($userID));
 
         // Block the IP associated with the userID
-        $stmt = $conn->prepare("SELECT IPAddress FROM tblUserLog1_202407 WHERE UserName = ?");
-        if ($stmt) {
-            $stmt->bind_param("s", $userID);
-            $stmt->execute();
-            $stmt->bind_result($userIP);
-            while ($stmt->fetch()) {
-                $blockStmt = $conn->prepare("INSERT INTO BlockedIPs (ip_address, blocked_until) VALUES (?, DATEADD(HOUR, 1, GETDATE()))");
-                if ($blockStmt) {
-                    $blockStmt->bind_param("s", $userIP);
-                    $blockStmt->execute();
-                    $blockStmt->close();
-                }
-            }
-            $stmt->close();
-        } else {
-            die("Failed to prepare statement: " . $conn->error);
+        $stmt = odbc_prepare($conn, "SELECT IPAddress FROM tblUserLog1_202407 WHERE UserName = ?");
+        odbc_execute($stmt, array($userID));
+        while (odbc_fetch_row($stmt)) {
+            $userIP = odbc_result($stmt, "IPAddress");
+            $blockStmt = odbc_prepare($conn, "INSERT INTO BlockedIPs (ip_address, blocked_until) VALUES (?, DATEADD(HOUR, 1, GETDATE()))");
+            odbc_execute($blockStmt, array($userIP));
         }
     }
 }
@@ -99,18 +68,11 @@ function logAndBlockIP($ip, $details, $userID = null) {
 // Function to check if IP is blocked
 function isIPBlocked($ip) {
     global $conn;
-    $stmt = $conn->prepare("SELECT COUNT(*) FROM BlockedIPs WHERE ip_address = ? AND blocked_until > GETDATE()");
-    if ($stmt) {
-        $stmt->bind_param("s", $ip);
-        $stmt->execute();
-        $stmt->bind_result($isBlocked);
-        $stmt->fetch();
-        $stmt->close();
+    $stmt = odbc_prepare($conn, "SELECT COUNT(*) FROM BlockedIPs WHERE ip_address = ? AND blocked_until > GETDATE()");
+    odbc_execute($stmt, array($ip));
+    $isBlocked = odbc_result($stmt, 1);
 
-        return $isBlocked > 0;
-    } else {
-        die("Failed to prepare statement: " . $conn->error);
-    }
+    return $isBlocked > 0;
 }
 
 // Get user IP address
@@ -132,17 +94,9 @@ function logAction($userID, $actionType, $details) {
         die("Suspicious activity detected. Your IP has been logged and may be blocked.");
     }
 
-    $stmt = $conn->prepare("CALL LogAction(?, ?, ?)");
-    if ($stmt) {
-        $stmt->bind_param("sss", $userID, $actionType, $details);
-        $stmt->execute();
-        if ($stmt->error) {
-            die("Execute failed: " . $stmt->error);
-        }
-        $stmt->close();
-    } else {
-        die("Failed to prepare statement: " . $conn->error);
-    }
+    $stmt = odbc_prepare($conn, "CALL LogAction(?, ?, ?)");
+    $params = array($userID, $actionType, $details);
+    odbc_execute($stmt, $params);
 }
 
 // Start session and implement rate limiting
@@ -161,10 +115,18 @@ if (isset($_POST['userID']) && isset($_POST['actionType']) && isset($_POST['deta
     $userID = sanitizeInput($_POST['userID']);
     $actionType = sanitizeInput($_POST['actionType']);
     $details = sanitizeInput($_POST['details']);
+    
+    // Log the action
     logAction($userID, $actionType, $details);
 
     echo "Action logged successfully.";
 } else {
-    die("Missing required parameters.");
+    // Debugging: Output which parameters are missing
+    $missingParams = [];
+    if (!isset($_POST['userID'])) $missingParams[] = 'userID';
+    if (!isset($_POST['actionType'])) $missingParams[] = 'actionType';
+    if (!isset($_POST['details'])) $missingParams[] = 'details';
+
+    $missingParamsList = implode(', ', $missingParams);
+    die("Missing required parameters: $missingParamsList.");
 }
-?>

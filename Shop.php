@@ -1,7 +1,15 @@
 <?php
-session_start(); // Ensure session is started
+session_start();
 
-require 'mssqlconfig.php';
+require 'dbconfig.php'; // Load the database configuration
+
+try {
+    $dsn = "odbc:Driver={SQL Server};Server=$hostname;Database=$dbname;";
+    $pdo = new PDO($dsn, $dbuser, $dbpassword);
+    $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+} catch (PDOException $e) {
+    die("Unable to connect to the database: " . $e->getMessage());
+}
 
 // Load PayPal config
 $paypalConfig = include('paypal_config.php');
@@ -37,11 +45,10 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
     } elseif (isset($_POST['remove_item'])) {
         $index = intval($_POST['remove_item']);
         unset($_SESSION['cart'][$index]);
-        $_SESSION['cart'] = array_values($_SESSION['cart']); // Re-index array
+        $_SESSION['cart'] = array_values($_SESSION['cart']);
     } elseif (isset($_POST['clear_cart'])) {
         $_SESSION['cart'] = array();
     } elseif (isset($_POST['paypal_success'])) {
-        // Handle successful PayPal payment
         foreach ($_SESSION['cart'] as $cart_item) {
             $game_id = $cart_item['game_id'];
             $item = $cart_item['item'];
@@ -52,19 +59,19 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
             $time = date('Y-m-d H:i:s');
 
             // Insert into PurchaseLog table
-            $sql = "INSERT INTO PurchaseLog (GameID, Item, Price, PurchaseTime, ItemKind, ItemIndex) VALUES ('$game_id', '$item', '$price', '$time', $item_kind, $item_index)";
-            if (!mssql_query($sql, $db_link)) {
-                logError('Failed to insert into PurchaseLog: ' . mssql_get_last_message());
-            }
+            $sql = "INSERT INTO PurchaseLog (GameID, Item, Price, PurchaseTime, ItemKind, ItemIndex) 
+                    VALUES (?, ?, ?, ?, ?, ?)";
+            $stmt = $pdo->prepare($sql);
+            $stmt->execute([$game_id, $item, $price, $time, $item_kind, $item_index]);
 
-            // Send item to the player
-            sendItemsInBatches($game_id, array_fill(0, $item_count, $cart_item), $db_link);
+            // Send items to the player
+            sendItemsInBatches($game_id, array_fill(0, $item_count, $cart_item), $pdo);
         }
         $_SESSION['cart'] = array();
     }
 }
 
-function sendItemsInBatches($game_id, $items, $db_link) {
+function sendItemsInBatches($game_id, $items, $pdo) {
     $totalItems = count($items);
     $batchSize = 5;
 
@@ -74,17 +81,23 @@ function sendItemsInBatches($game_id, $items, $db_link) {
         foreach ($batch as $item) {
             $sql = "EXEC RMS_SENDSPECIALITEMMAIL 
                     @Sender = '[GMFantasy]', 
-                    @Recipient = '$game_id', 
+                    @Recipient = :game_id, 
                     @Title = '[StorePurchase]', 
                     @Content = 'Thank you for your purchase!', 
-                    @ItemKind = " . intval($item['item_kind']) . ", 
-                    @ItemIndex = " . intval($item['item_index']) . ", 
-                    @ItemCount = " . intval($item['item_count']);
+                    @ItemKind = :itemKind, 
+                    @ItemIndex = :itemIndex, 
+                    @ItemCount = :itemCount";
 
-            if (mssql_query($sql, $db_link)) {
-                echo "Batch of items sent successfully to $game_id.<br>";
+            $stmt = $pdo->prepare($sql);
+            $stmt->bindParam(':game_id', $game_id, PDO::PARAM_STR);
+            $stmt->bindParam(':itemKind', $item['item_kind'], PDO::PARAM_INT);
+            $stmt->bindParam(':itemIndex', $item['item_index'], PDO::PARAM_INT);
+            $stmt->bindParam(':itemCount', $item['item_count'], PDO::PARAM_INT);
+
+            if ($stmt->execute()) {
+                echo "Item (Kind: {$item['item_kind']}, Index: {$item['item_index']}, Count: {$item['item_count']}) sent successfully to $game_id.<br>";
             } else {
-                echo "Error sending batch of items to $game_id: " . mssql_get_last_message() . "<br>";
+                echo "Error sending item to $game_id: " . implode(", ", $stmt->errorInfo()) . "<br>";
             }
         }
     }
@@ -107,8 +120,8 @@ function logError($message) {
             width: 100%;
             margin: 0;
             font-family: 'Arial', sans-serif;
-            background-color: #0c0c0c; /* Dark background color */
-            color: #ffffff; /* Light text color */
+            background-color: #ffffff; /* White background */
+            color: #00bfa5; /* Turquoise text */
         }
 
         .centered {
@@ -117,7 +130,7 @@ function logError($message) {
         }
 
         h2 {
-            color: #e74c3c; /* Redmoon Fantasy theme color for headings */
+            color: #00bfa5; /* Turquoise text */
         }
 
         form {
@@ -127,7 +140,7 @@ function logError($message) {
         input[type="button"], input[type="submit"], button {
             padding: 10px 20px;
             font-size: 16px;
-            background-color: #e74c3c; /* Redmoon Fantasy theme color for buttons */
+            background-color: #00bfa5; /* Turquoise background */
             color: #ffffff;
             border: none;
             cursor: pointer;
@@ -135,7 +148,7 @@ function logError($message) {
         }
 
         input[type="button"]:hover, input[type="submit"]:hover, button:hover {
-            background-color: #c0392b; /* Darker shade on hover */
+            background-color: #008f7a; /* Darker shade on hover */
         }
 
         .major {
@@ -147,12 +160,12 @@ function logError($message) {
         }
 
         b {
-            color: #e74c3c; /* Redmoon Fantasy theme color for bold text */
+            color: #000000; /* Black text */
         }
 
         hr {
             margin-top: 40px;
-            border: 1px solid #e74c3c; /* Redmoon Fantasy theme color for horizontal rules */
+            border: 1px solid #008f7a; /* Turquoise border */
         }
 
         .item-list {
@@ -165,7 +178,7 @@ function logError($message) {
         }
 
         a {
-            color: #e74c3c; /* Redmoon Fantasy theme color for links */
+            color: #00bfa5; /* Turquoise text */
             text-decoration: none;
         }
 
@@ -181,11 +194,11 @@ function logError($message) {
 
         .item-box {
             margin: 10px;
-            border: 1px solid #e74c3c; /* Redmoon Fantasy theme color for borders */
+            border: 1px solid #00bfa5; /* Turquoise border */
             padding: 10px;
             width: 300px;
             text-align: center;
-            background-color: #1c1c1c; /* Slightly lighter background for item boxes */
+            background-color: #f0f0f0; /* Light grey background */
             border-radius: 10px;
         }
     </style>
@@ -203,100 +216,128 @@ function logError($message) {
     <div class="centered">
         <p>Please enter your Game ID to proceed with purchases.</p>
         <form id="checkout-form" action="" method="post">
-            <label for="game_id" style="color: #e74c3c;">Game ID:</label>
+            <label for="game_id" style="color: #00bfa5;">Game ID:</label>
             <input type="text" id="game_id" name="game_id" maxlength="14" required style="padding: 10px; width: 200px; margin-top: 10px;"><br><br>
         </form>
     </div>
 
     <div class="item-container">
-        <!-- Beginner Weapon -->
+        <!-- Clear Stage 0 Weapons -->
         <div class="item-box">
-            <h3>Beginner Weapon - $10.00 USD</h3>
-            <select id="beginner-weapon">
-                <option value="Sword of Aelous" data-price="10.00" data-item-kind="6" data-item-index="80" data-item-count="1">Sword of Aelous</option>
-                <option value="Wand of Gaia" data-price="10.00" data-item-kind="6" data-item-index="81" data-item-count="1">Wand of Gaia</option>
-                <option value="Spear of Ares" data-price="10.00" data-item-kind="6" data-item-index="82" data-item-count="1">Spear of Ares</option>
-                <option value="Nemesis Bow" data-price="10.00" data-item-kind="6" data-item-index="83" data-item-count="1">Nemesis Bow</option>
-                <option value="Madness Gun" data-price="10.00" data-item-kind="6" data-item-index="84" data-item-count="1">Madness Gun</option>
+            <h3>Clear Stage 0 Weapons - $15.00 USD Each</h3>
+            <select id="clear-stage-0-weapon">
+                <option value="Manus Blade" data-price="15.00" data-item-kind="6" data-item-index="110" data-item-count="1">Manus Blade</option>
+                <option value="Measure" data-price="15.00" data-item-kind="6" data-item-index="111" data-item-count="1">Measure</option>
+                <option value="Destruction" data-price="15.00" data-item-kind="6" data-item-index="112" data-item-count="1">Destruction</option>
+                <option value="Creationer" data-price="15.00" data-item-kind="6" data-item-index="113" data-item-count="1">Creationer</option>
+                <option value="Sauvagine" data-price="15.00" data-item-kind="6" data-item-index="114" data-item-count="1">Sauvagine</option>
             </select>
-            <button class="paypal-button" type="button" onclick="addToCartFromSelect('beginner-weapon')">Add to Cart</button>
+            <button class="paypal-button" type="button" onclick="addToCartFromSelect('clear-stage-0-weapon')">Add to Cart</button>
         </div>
 
-        <!-- Beginner Gear Set -->
+        <!-- Sunset Armor -->
         <div class="item-box">
-            <h3>Beginner Gear Set - $50.00 USD</h3>
-            <p>Fresh Breeze</p>
-            <p>Erinyes Shield</p>
-            <p>Jupiter Chest Piece</p>
-            <p>Jupiter Leggings</p>
-            <p>5x Protections</p>
-            <button class="paypal-button" type="button" onclick="addToCart('Beginner Gear Set', 50.00, 0, 0, 1)">Add to Cart</button>
-        </div>
-
-        <!-- Clear Stage 3 Weapon x5 -->
-        <div class="item-box">
-            <h3>Clear Stage 3 Weapon x5 - $50.00 USD</h3>
-            <select id="clear-stage-3-weapon">
-                <option value="Augmented Manus Blade" data-price="50.00" data-item-kind="6" data-item-index="170" data-item-count="5">Augmented Manus Blade</option>
-                <option value="Augmented Measure" data-price="50.00" data-item-kind="6" data-item-index="171" data-item-count="5">Augmented Measure</option>
-                <option value="Augmented Destruction" data-price="50.00" data-item-kind="6" data-item-index="172" data-item-count="5">Augmented Destruction</option>
-                <option value="Augmented Creationer" data-price="50.00" data-item-kind="6" data-item-index="173" data-item-count="5">Augmented Creationer</option>
-                <option value="Augmented Sauvagine" data-price="50.00" data-item-kind="6" data-item-index="174" data-item-count="5">Augmented Sauvagine</option>
+            <h3>Sunset Armor - $12.00 USD Each</h3>
+            <select id="sunset-armor">
+                <option value="Nauthiz Helmet" data-price="12.00" data-item-kind="6" data-item-index="100" data-item-count="1">Nauthiz Helmet</option>
+                <option value="Nauthiz Armor" data-price="12.00" data-item-kind="6" data-item-index="101" data-item-count="1">Nauthiz Armor</option>
+                <option value="Nauthiz Pants" data-price="12.00" data-item-kind="6" data-item-index="102" data-item-count="1">Nauthiz Pants</option>
+                <option value="Nauthiz Boots" data-price="12.00" data-item-kind="6" data-item-index="103" data-item-count="1">Nauthiz Boots</option>
+                <option value="Nauthiz Shield" data-price="12.00" data-item-kind="6" data-item-index="104" data-item-count="1">Nauthiz Shield</option>
+                <option value="Nauthiz Gloves" data-price="12.00" data-item-kind="6" data-item-index="105" data-item-count="1">Nauthiz Gloves</option>
+                <option value="Nauthiz Belt" data-price="12.00" data-item-kind="6" data-item-index="106" data-item-count="1">Nauthiz Belt</option>
+                <option value="Majestic Necklace" data-price="12.00" data-item-kind="6" data-item-index="108" data-item-count="1">Majestic Necklace</option>
             </select>
-            <button class="paypal-button" type="button" onclick="addToCartFromSelect('clear-stage-3-weapon')">Add to Cart</button>
+            <button class="paypal-button" type="button" onclick="addToCartFromSelect('sunset-armor')">Add to Cart</button>
         </div>
 
-        <!-- Liquid of Your Choice -->
+        <!-- Majestic Ring -->
         <div class="item-box">
-            <h3>Liquid of Your Choice - $20.00 USD</h3>
-            <select id="liquid-choice">
-                <option value="Orb of Strength" data-price="20.00" data-item-kind="6" data-item-index="204" data-item-count="1">Orb of Strength</option>
-                <option value="Orb of Power" data-price="20.00" data-item-kind="6" data-item-index="205" data-item-count="1">Orb of Power</option>
-                <option value="Orb of Dexterity" data-price="20.00" data-item-kind="6" data-item-index="206" data-item-count="1">Orb of Dexterity</option>
-                <option value="Orb of Spirit" data-price="20.00" data-item-kind="6" data-item-index="207" data-item-count="1">Orb of Spirit</option>
+            <h3>Majestic Ring - $7.00 USD Each</h3>
+            <button class="paypal-button" type="button" onclick="addToCart('Majestic Ring', 7.00, 6, 107, 1)">Add to Cart</button>
+        </div>
+
+        <!-- Miscellaneous Uniques -->
+        <div class="item-box">
+            <h3>Miscellaneous Uniques - $5.00 USD Each</h3>
+            <select id="misc-uniques">
+                <option value="Selion" data-price="5.00" data-item-kind="6" data-item-index="1" data-item-count="1">Selion</option>
+                <option value="Tamas" data-price="5.00" data-item-kind="6" data-item-index="2" data-item-count="1">Tamas</option>
+                <option value="God of War" data-price="5.00" data-item-kind="6" data-item-index="10" data-item-count="1">God of War</option>
+                <option value="Noas" data-price="5.00" data-item-kind="6" data-item-index="11" data-item-count="1">Noas</option>
+                <option value="Tears of Heliades" data-price="5.00" data-item-kind="6" data-item-index="12" data-item-count="1">Tears of Heliades</option>
+                <option value="Infrascope" data-price="5.00" data-item-kind="6" data-item-index="14" data-item-count="1">Infrascope</option>
+                <option value="rajas" data-price="5.00" data-item-kind="6" data-item-index="15" data-item-count="1">rajas</option>
+                <option value="Nagrepar" data-price="5.00" data-item-kind="6" data-item-index="18" data-item-count="1">Nagrepar</option>
+                <option value="Largesse" data-price="5.00" data-item-kind="6" data-item-index="24" data-item-count="1">Largesse</option>
+                <option value="Silpheed" data-price="5.00" data-item-kind="6" data-item-index="26" data-item-count="1">Silpheed</option>
+                <option value="Elein" data-price="5.00" data-item-kind="6" data-item-index="28" data-item-count="1">Elein</option>
+                <option value="Minerva's Robe" data-price="5.00" data-item-kind="6" data-item-index="91" data-item-count="1">Minerva's Robe</option>
+                <option value="Minerva's Blessing" data-price="5.00" data-item-kind="6" data-item-index="92" data-item-count="1">Minerva's Blessing</option>
+                <option value="Parcae's Plate" data-price="5.00" data-item-kind="6" data-item-index="93" data-item-count="1">Parcae's Plate</option>
+                <option value="Parcae's Buckle" data-price="5.00" data-item-kind="6" data-item-index="94" data-item-count="1">Parcae's Buckle</option>
+                <option value="Erinyes" data-price="5.00" data-item-kind="6" data-item-index="95" data-item-count="1">Erinyes</option>
+                <option value="Rage of Erinyes" data-price="5.00" data-item-kind="6" data-item-index="96" data-item-count="1">Rage of Erinyes</option>
+                <option value="Will of Erinyes" data-price="5.00" data-item-kind="6" data-item-index="97" data-item-count="1">Will of Erinyes</option>
             </select>
-            <button class="paypal-button" type="button" onclick="addToCartFromSelect('liquid-choice')">Add to Cart</button>
+            <button class="paypal-button" type="button" onclick="addToCartFromSelect('misc-uniques')">Add to Cart</button>
         </div>
 
-        <!-- Moderate Gear Set -->
+        <!-- Ring Set -->
         <div class="item-box">
-            <h3>Moderate Gear Set - $100.00 USD</h3>
-            <p>Ancient Coin</p>
-            <p>Legendary Necklace</p>
-            <p>Fallen Star (orb slot for all characters)</p>
-            <p>5x Lotto Tickets</p>
-            <p>8x Protections</p>
-            <button class="paypal-button" type="button" onclick="addToCart('Moderate Gear Set', 100.00, 0, 0, 1)">Add to Cart</button>
+            <h3>Ring Set - $15.00 USD (Set)</h3>
+            <p>Graupnel</p>
+            <p>Topaz</p>
+            <p>Aquarine</p>
+            <button class="paypal-button" type="button" onclick="addToCart('Ring Set', 15.00, 6, 0, 1)">Add to Cart</button>
         </div>
 
-        <!-- Clear Stage 4 Weapon x5 -->
+        <!-- Minerva's Tears -->
         <div class="item-box">
-            <h3>Clear Stage 4 Weapon x5 - $50.00 USD</h3>
-            <select id="clear-stage-4-weapon">
-                <option value="Superior Manus Blade" data-price="50.00" data-item-kind="6" data-item-index="190" data-item-count="5">Superior Manus Blade</option>
-                <option value="Superior Measure" data-price="50.00" data-item-kind="6" data-item-index="191" data-item-count="5">Superior Measure</option>
-                <option value="Superior Destruction" data-price="50.00" data-item-kind="6" data-item-index="192" data-item-count="5">Superior Destruction</option>
-                <option value="Superior Creationer" data-price="50.00" data-item-kind="6" data-item-index="193" data-item-count="5">Superior Creationer</option>
-                <option value="Superior Sauvagine" data-price="50.00" data-item-kind="6" data-item-index="194" data-item-count="5">Superior Sauvagine</option>
-            </select>
-            <button class="paypal-button" type="button" onclick="addToCartFromSelect('clear-stage-4-weapon')">Add to Cart</button>
+            <h3>Minerva's Tears - $5.00 USD Each</h3>
+            <button class="paypal-button" type="button" onclick="addToCart('Minerva\'s Tears', 5.00, 6, 90, 1)">Add to Cart</button>
         </div>
 
-        <!-- Advanced Gear Set -->
+        <!-- Lottery Ticket -->
         <div class="item-box">
-            <h3>Advanced Gear Set - $150.00 USD</h3>
-            <p>Fantasy Necklace</p>
-            <p>Fantasy Diamond</p>
-            <p>8x Lotto Tickets</p>
-            <p>8x Protections</p>
-            <p>Heart of Redmoon x3 (ring slot)</p>
-            <button class="paypal-button" type="button" onclick="addToCart('Advanced Gear Set', 150.00, 0, 0, 1)">Add to Cart</button>
+            <h3>Lottery Ticket - $5.00 USD Each</h3>
+            <button class="paypal-button" type="button" onclick="addToCart('Lottery Ticket', 5.00, 6, 197, 1)">Add to Cart</button>
         </div>
 
-        <!-- Server Files + Guide -->
+        <!-- Mysterious Rune -->
         <div class="item-box">
-            <h3>Server Files + Guide - $1000.00 USD</h3>
-            <button class="paypal-button" type="button" onclick="addToCart('Server Files + Guide', 1000.00, 0, 0, 1)">Add to Cart</button>
+            <h3>Mysterious Rune (Level 1 Mage Weapon) - $10.00 USD</h3>
+            <button class="paypal-button" type="button" onclick="addToCart('Mysterious Rune', 10.00, 6, 212, 1)">Add to Cart</button>
+        </div>
+
+        <!-- Fallen Star -->
+        <div class="item-box">
+            <h3>Fallen Star (Level 1 All Char Orb Slot) - $10.00 USD</h3>
+            <button class="paypal-button" type="button" onclick="addToCart('Fallen Star', 10.00, 6, 219, 1)">Add to Cart</button>
+        </div>
+
+        <!-- Runes of Death -->
+        <div class="item-box">
+            <h3>Runes of Death (High Level Mage Weapon) - $25.00 USD</h3>
+            <button class="paypal-button" type="button" onclick="addToCart('Runes of Death', 25.00, 6, 216, 1)">Add to Cart</button>
+        </div>
+
+        <!-- Protection -->
+        <div class="item-box">
+            <h3>Protection - $2.00 USD Each</h3>
+            <button class="paypal-button" type="button" onclick="addToCart('Protection', 2.00, 6, 196, 1)">Add to Cart</button>
+        </div>
+
+        <!-- Pain Blaster -->
+        <div class="item-box">
+            <h3>Pain Blaster - $25.00 USD</h3>
+            <button class="paypal-button" type="button" onclick="addToCart('Pain Blaster', 25.00, 1, 71, 1)">Add to Cart</button>
+        </div>
+
+        <!-- Slayer Blaster -->
+        <div class="item-box">
+            <h3>Slayer Blaster - $50.00 USD</h3>
+            <button class="paypal-button" type="button" onclick="addToCart('Slayer Blaster', 50.00, 1, 72, 1)">Add to Cart</button>
         </div>
     </div>
 
@@ -305,7 +346,7 @@ function logError($message) {
         <?php
         if (!empty($_SESSION['cart'])) {
             echo '<form method="post" action="">';
-            echo '<table border="1" style="width: 50%; margin: 0 auto; color: #ffffff;">';
+            echo '<table border="1" style="width: 50%; margin: 0 auto; color: #000000;">';
             echo '<tr><th>Game ID</th><th>Item</th><th>Price</th><th>Action</th></tr>';
             $total = 0;
             foreach ($_SESSION['cart'] as $index => $cart_item) {
