@@ -1,0 +1,299 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Redmoon Fantasy</title>
+    <link rel="icon" href="images/favicon.png" type="image/png">
+    <style>
+        /* Existing styles */
+        body, html {
+            margin: 0;
+            padding: 0;
+            font-family: 'Times New Roman', serif;
+            color: #00bfa5; /* Turquoise text color */
+            background-color: #f4f4f4;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .main-content {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .hero {
+            background: url('images/BackgroundTurqoise.png') no-repeat center center;
+            background-size: cover;
+            color: #00bfa5; /* Turquoise text color */
+            height: 34vh;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            text-align: center;
+            padding: 20px;
+            position: relative;
+        }
+
+        .hero h1, .hero p, .btn-primary {
+            color: #00bfa5; /* Turquoise text color */
+            background-color: transparent;
+            margin: 0;
+        }
+
+        .btn-primary {
+            background-color: transparent;
+            border: 2px solid #00bfa5; /* Turquoise border */
+            padding: 10px 20px;
+            font-size: 1rem;
+            text-decoration: none;
+            border-radius: 5px;
+            transition: background-color 0.3s ease, color 0.3s ease;
+        }
+
+        .btn-primary:hover {
+            background-color: #00bfa5; /* Turquoise background on hover */
+            color: #fff; /* White text on hover */
+        }
+
+        .discord-link {
+            position: absolute;
+            top: 20px;
+            left: 25px;
+            z-index: 1001;
+        }
+
+        .dropdown {
+            position: absolute;
+            top: 5px;
+            right: 40px;
+            z-index: 1001;
+            text-align: center;
+        }
+
+        .dropdown-btn {
+            background-color: transparent;
+            border: none;
+            cursor: pointer;
+            padding: 0;
+        }
+
+        .dropdown-btn img {
+            width: 70px;
+            height: 70px;
+        }
+
+        .dropdown-text {
+            font-size: 0.9rem;
+            color: #00bfa5; /* Turquoise text color */
+        }
+
+        .dropdown-content {
+            display: none;
+            position: absolute;
+            top: 80px;
+            right: 0;
+            background-color: #333;
+            min-width: 200px;
+            box-shadow: 0px 8px 16px 0px rgba(0, 0, 0, 0.2);
+            z-index: 1;
+        }
+
+        .dropdown-content a {
+            color: #ffffff;
+            padding: 12px 16px;
+            text-decoration: none;
+            display: block;
+            transition: background-color 0.3s;
+        }
+
+        .dropdown-content a:hover {
+            background-color: #555;
+        }
+
+        .dropdown-btn:focus + .dropdown-content {
+            display: block;
+        }
+
+        .dropdown-content.show {
+            display: block;
+        }
+
+        .content-section {
+            padding: 20px;
+            text-align: center;
+            background-color: #f9f9f9;
+            min-height: 35vh;
+        }
+
+        .content-section h2 {
+            margin-bottom: 15px;
+            color: #00bfa5; /* Turquoise text color */
+            font-size: 1.5rem;
+        }
+
+        .content-section p {
+            max-width: 600px;
+            margin: 0 auto 20px;
+            color: #333; /* Turquoise text color */
+            font-size: 1rem;
+        }
+
+        .content-icons {
+            display: flex;
+            justify-content: center;
+            gap: 20px;
+            flex-wrap: wrap;
+        }
+
+        .content-icons div {
+            text-align: center;
+            max-width: 160px;
+        }
+
+        .content-icons img {
+            width: 70px;
+            height: 70px;
+            border-radius: 50%;
+            margin-bottom: 10px;
+        }
+
+        .footer {
+            background-color: #333;
+            color: #00bfa5; /* Turquoise text color */
+            padding: 1px;
+            text-align: center;
+            font-size: 0.8rem;
+            flex-shrink: 0;
+        }
+
+        @media (max-width: 768px) {
+            .hero h1 {
+                font-size: 2rem;
+            }
+
+            .content-icons {
+                flex-direction: column;
+                align-items: center;
+            }
+        }
+
+        /* Modal Styles */
+        .modal {
+            width: 100%;
+            height: 100%;
+            top: 0;
+            position: fixed;
+            visibility: hidden;
+            display: none;
+            background-color: rgba(22, 22, 22, 0.5);
+            z-index: 1000;
+        }
+        .modal:target {
+            visibility: visible;
+            display: block;
+        }
+        .reveal-modal {
+            position: relative;
+            margin: 0 auto;
+            top: 15%;
+            width: 80%;
+            max-width: 500px;
+            padding: 20px;
+            background-color: #1c1c1c;
+            border-radius: 10px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.5);
+            color: #00bfa5; /* Turquoise text color */
+        }
+        .close-btn {
+            text-decoration: none;
+            color: #00bfa5; /* Turquoise text color */
+            float: right;
+            font-size: 20px;
+        }
+        iframe {
+            width: 100%;
+            height: 400px;
+            border: none;
+            border-radius: 5px;
+            overflow: hidden;
+        }
+    </style>
+</head>
+
+<body>
+
+    <div class="main-content">
+        <header class="hero">
+            <a href="https://discord.gg/GWBAh5j" target="_blank" class="discord-link">
+                <img src="images/discord.png" alt="Discord" style="width: 50px; height: 50px;">
+            </a>
+            <div class="dropdown">
+                <button class="dropdown-btn" onclick="toggleDropdown()">
+                    <img src="images/hamburger.png" alt="Menu">
+                </button>
+                <div class="dropdown-content" id="dropdownMenu">
+                    <a href="http://redmoonfantasy.ddns.net:3400/redmoon/addaccount.php/">Account Creation</a>
+                    <a href="http://redmoonfantasy.ddns.net:3400/redmoon/REBIRTHlogin.php/">Rebirth</a>
+                    <a href="http://redmoonfantasy.ddns.net:3400/redmoon/Shop.php">Store</a>
+                    <a href="http://redmoonfantasy.ddns.net:3400/redmoon/HelpfulLinks.php">Helpful Tools</a>
+                    <a href="http://redmoonfantasy.ddns.net:3400/redmoon/ranks.php">Rankings</a>
+                    <a href="http://redmoonfantasy.ddns.net:3400/redmoon/online.php">Online</a>
+                    <a href="http://redmoonfantasy.ddns.net:3400/redmoon/login.php">Un-Stuck</a>
+                    <a href="http://redmoonfantasy.ddns.net:3400/redmoon/DELETElogin.php">Delete Characters</a>
+                    <a href="http://redmoonfantasy.ddns.net:3400/redmoon/Downloads.php">Downloads</a>
+                </div>
+            </div>
+        </header>
+
+        <section id="about" class="content-section">
+            <h2>Redmoon Fantasy</h2>
+            <p>Redmoon Fantasy offers an immersive experience with unique gameplay features, including a fully functioning Battle-Match server, a Rebirth system, and server-exclusive Hardcore-style gameplay.</p>
+            <div class="content-icons">
+                <div>
+                    <img src="images/WiFiButton.png" alt="PC Icon">
+                    <h3>Reliable</h3>
+                    <p>Smooth and responsive gameplay.</p>
+                </div>
+                <div>
+                    <img src="images/CodeButton.png" alt="Code Icon">
+                    <h3>Secured</h3>
+                    <p>Ensuring the integrity of the game.</p>
+                </div>
+                <div>
+                    <img src="images/PCButton.png" alt="Community Icon">
+                    <h3>Protected</h3>
+                    <p>Efficient data handling for security.</p>
+                </div>
+            </div>
+        </section>
+    </div>
+
+    <footer class="footer">
+        <p> 2024 Redmoon Fantasy</p>
+    </footer>
+
+    <script>
+        function toggleDropdown() {
+            var dropdown = document.getElementById("dropdownMenu");
+            dropdown.classList.toggle("show");
+        }
+
+        // Close the dropdown if the user clicks outside of it
+        window.onclick = function(event) {
+            if (!event.target.matches('.dropdown-btn') && !event.target.matches('.dropdown-btn img')) {
+                var dropdown = document.getElementById("dropdownMenu");
+                if (dropdown.classList.contains('show')) {
+                    dropdown.classList.remove('show');
+                }
+            }
+        }
+    </script>
+
+</body>
+
+</html>
