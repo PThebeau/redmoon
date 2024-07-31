@@ -1,0 +1,20 @@
+.responsive {
+    width: 100%;
+    height: auto;
+  }
+
+  .footer {
+    position: fixed;
+    left: 0;
+    bottom: 0;
+    width: 100%;
+    background-color: black;
+    color: white;
+    text-align: center;
+ }
+
+ .h2{
+    padding-top: 15px;
+    padding-bottom: 15px;
+    text-align: center; 
+}
